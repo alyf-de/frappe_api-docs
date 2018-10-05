@@ -1,4 +1,6 @@
-Unofficial documentation of the [Frappe](https://frappe.io) / [ERPNext](https://erpnext.org) API. Online Docs: [Swagger Hub](https://app.swaggerhub.com/apis/alyf.de/Frappe/0.0.1)
+Unofficial documentation of the [Frappe](https://frappe.io) / [ERPNext](https://erpnext.org) API. Online Docs: [Swagger Hub](https://app.swaggerhub.com/apis-docs/alyf.de/Frappe/0.0.1)
+
+---
 
 Base URL: https://{YOUR ERPNEXT INSTANCE}/api
 
