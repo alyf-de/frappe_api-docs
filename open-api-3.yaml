@@ -1,0 +1,406 @@
+openapi: 3.0.0
+info:
+  description: |
+    Unofficial documentation of the [Frappe](https://frappe.io) / [ERPNext](https://erpnext.org) API.
+  version: "0.0.1"
+  title: Frappe / ERPNext API
+  contact:
+    name: Raffael Meyer
+    url: https://alyf.de
+    email: raffael@alyf.de
+  license:
+    name: GPL-3.0
+servers:
+- url: https://demo.erpnext.com/api
+  description: Demo server
+- url: https://{company}.erpnext.com/api
+  description: Custom ERPNext.com instance
+  variables:
+    company:
+      default: demo
+      description: Subdomain of your company's custom ERPNext instance
+tags: 
+  - name: Naive Authentication
+    description: If you are developing something serious, you may want to use oAuth2.
+paths:
+  /method/login:
+    post:
+      tags: 
+        - Naive Authentication
+      summary: Authenticate yourself
+      operationId: login
+      parameters:
+        - in: query
+          name: usr
+          schema:
+            type: string
+            example: Administrator
+          required: false
+          description: Your username
+        - in: query
+          name: pwd
+          schema:
+            type: string
+            example: admin
+          required: false
+          description: Your password
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                usr:
+                  type: string
+                  example: Administrator
+                pwd:
+                  type: string
+                  example: admin
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  full_name:
+                    type: string
+                    example: Administrator
+                  message:
+                    type: string
+                    example: Logged in
+                  home_page:
+                    type: string
+                    example: /desk
+        '401':
+          description: oneOf(Incomplete login details, Incorrect password, User disabled or missing)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exc:
+                    type: string
+                    example: Traceback (most recent call last) ...
+                  message:
+                    type: string
+                    example: Incorrect password
+            text/html:
+              schema:
+                type: string
+  /method/logout:
+    get:
+      tags: 
+        - Naive Authentication
+      summary: Logout from current session
+      responses:
+          '200':
+            description: Logged out.
+            content:
+              application/json:
+                schema:
+                  type: object
+  /method/frappe.auth.get_logged_user:
+    get:
+      tags: 
+        - Naive Authentication
+      summary: Get the user that is logged in
+      operationId: authGetLoggedUser
+      description: Get the currently logged in user
+      responses:
+        '200':
+          description: search results matching criteria
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: demo@erpnext.com
+        '401':
+          description: Not permitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exc:
+                    type: string
+                    example: Traceback (most recent call last) ...
+                  _server_messages:
+                    type: string
+                    example: "[{\"message\": \"Not permitted\"}]"
+            text/html:
+              schema:
+                type: string
+  /method/version:
+    get:
+      summary: Get the version of the app
+      responses:
+          '200':
+            description: Successful
+            content:
+              application/json:
+                schema:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                      example: "10.1.36"
+  /resource/{DocType}:
+    post:
+      summary: Create a new document
+      parameters:
+        - in: path
+          name: DocType
+          required: true
+          schema:
+            type: string
+            example: Customer
+          description: |
+            The DocType you'd like to receive. For example, Customer.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+      responses:
+        "200":
+          description: Document created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/DocType'
+        "403":
+          description: Insufficient Permission
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exc:
+                    type: string
+                    example: Traceback (most recent call last) ...
+                  _error_message:
+                    type: string
+                    example: Insufficient Permission for {DocType}
+            text/html:
+              schema:
+                type: string
+    get:
+      summary: Get a list of documents
+      description: Returns a list of documents of the given type
+      parameters:
+        - in: path
+          name: DocType
+          required: true
+          schema:
+            type: string
+          description: |
+            The DocType you'd like to receive. For example Customer, Supplier, 
+            Employee, Account, Lead, Company, Sales Invoice, Purchase Invoice, Stock Entry, etc.
+        - in: query
+          name: fields
+          schema:
+            type: array
+            items:
+              type: string
+            default: ["name"]
+          description: |
+            By default, only the "name" field is included in the listing, to add more fields, 
+            you can pass the fields param to GET request. For example, fields=["name","country"]
+        - in: query
+          name: filters
+          schema:
+            type: array
+            items:
+              type: array
+              items:
+                type: string
+          description: |
+            You can filter the listing using sql conditions by passing them as the filters GET param.
+            Each condition is an array of the format, [{doctype}, {field}, {operator}, {value}].
+            For example, filters=[["Customer", "country", "=", "India"]]
+        - in: query
+          name: limit_page_length
+          schema:
+            type: integer
+            default: 20
+          description: |
+            By default, all listings are returned paginated. With this parameter you can change the 
+            page size (how many items are teturned at once).
+        - in: query
+          name: limit_start
+          schema:
+            type: integer
+            default: 0
+          description: |
+            To request successive pages, pass a multiple of your limit_page_length as limit_start. 
+            For Example, to request the second page, pass limit_start as 20.
+      responses:
+        '200':
+          description: |
+            Found requested DocType. By default, only the "name" field is included in the listing, 
+            to add more fields, you can pass the fields param to GET request.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocList'
+  /resource/{DocType}/{DocumentName}:
+    get:
+      summary: Get a specific document
+      description: Get a document by it's name, for example EMP001 of DocType Employee.
+      parameters:
+        - in: path
+          name: DocType
+          required: true
+          schema:
+            type: string
+          description: |
+            The DocType you'd like to receive. For example Customer, Supplier, 
+            Employee, Account, Lead, Company, Sales Invoice, Purchase Invoice, Stock Entry, etc.
+        - in: path
+          name: DocumentName
+          required: true
+          schema:
+            type: string
+          description: |
+            The name (ID) of the document you'd like to receive. For example EMP001 (of type Employee).
+      responses:
+        '200':
+          description: Found requested document
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                 data:
+                  $ref: '#/components/schemas/DocType'
+    put:
+      summary: Update a specific document
+      description: TBD
+      parameters:
+        - in: path
+          name: DocType
+          required: true
+          schema:
+            type: string
+          description: |
+            The DocType you'd like to update. For example Customer, Supplier, 
+            Employee, Account, Lead, Company, Sales Invoice, Purchase Invoice, Stock Entry, etc.
+        - in: path
+          name: DocumentName
+          required: true
+          schema:
+            type: string
+          description: |
+            The name (ID) of the document you'd like to update. For example EMP001 (of type Employee).
+      responses:
+        '200':
+          description: Updated specified document
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                 data:
+                  $ref: '#/components/schemas/DocType'
+    delete:
+      summary: Delete a specific document
+      description: TBD
+      parameters:
+        - in: path
+          name: DocType
+          required: true
+          schema:
+            type: string
+          description: |
+            The type of the document you'd like to delete. For example Customer, Supplier, 
+            Employee, Account, Lead, Company, Sales Invoice, Purchase Invoice, Stock Entry, etc.
+        - in: path
+          name: DocumentName
+          required: true
+          schema:
+            type: string
+          description: |
+            The name (ID) of the document you'd like to delete. For example EMP001 (of type Employee).
+      responses:
+        '202':
+          description: Deleted specified document
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+components:
+  schemas:
+    DocType:
+      type: object
+      properties:
+        name:
+          type: string
+        modified_by:
+          type: string
+        creation:
+          type: string
+        modified:
+          type: string
+        doctype:
+          type: string
+        owner:
+          type: string
+        docstatus:
+          type: integer
+    DocList:
+      type: object
+      properties:
+       data:
+        type: array
+        items:
+          $ref: '#/components/schemas/DocType'
+  securitySchemes:
+    tokenAuth: # arbitrary name
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Get your API keys at User -> Api Access -> Generate Keys.
+        "headers = {'Authorization': 'token <api_key>:<api_secret>'}"
+    basicAuth: # arbitrary name
+      type: http
+      description: |
+        Get your API keys at User -> Api Access -> Generate Keys.
+        username = api_key; password = api_secret
+        [More info](https://frappe.io/docs/user/en/guides/integration/token_based_auth)
+      scheme: basic
+    oAuth2: # arbitrary name
+      type: oauth2
+      description: |
+        This API uses OAuth 2 with the authorization code flow. 
+        [More info]https://frappe.io/docs/user/en/guides/integration/using_oauth)
+      flows:
+        authorizationCode:
+          authorizationUrl: /method/frappe.integrations.oauth2.authorize
+          tokenUrl: /method/frappe.integrations.oauth2.get_token
+          refreshUrl: /method/frappe.integrations.oauth2.get_token
+          scopes:
+            all: Same permissions as the user who created the oAuth client
