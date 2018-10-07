@@ -94,13 +94,13 @@ Returns:
 
 # OAuth2
 
-Use the header `Authorizaton: Bearer <access_token>` to perform authenticated requests. You can receive an access token by combining the following two requests.
+Use the header `Authorizaton: Bearer <access_token>` to perform authenticated requests. You can receive a [bearer token](https://tools.ietf.org/html/rfc6750) by combining the following two requests.
 
 ## POST /method/frappe.integrations.oauth2.authorize
 
 Get an authorization code from the user to access ERPNext on his behalf. 
 
-Params:
+Params (in body):
 
 * client_id (string)
 
@@ -122,6 +122,8 @@ Params:
 
 	Callback URI that the user will be redirected to, after the application is authorized. The authorization code can then be extracted from the params.
 
+Content-Type: application/x-www-form-urlencoded
+
 Example:
 
 ```bash
@@ -132,12 +134,17 @@ curl -X POST https://demo.erpnext.com/api/method/frappe.integrations.oauth2.auth
   	     &redirect_uri=https%3A%2F%2Fapp.getpostman.com%2Foauth2%2Fcallback'
 ```
 
+For **testing purposes** you can also pass the parameters in the URL, like this (and open it in the browser):
+
+`https://demo.erpnext.com/api/method/frappe.integrations.oauth2.authorize?client_id=511cb2ac2d&state=444&response_type=code&scope=all&redirect_uri=https%3A%2F%2Fapp.getpostman.com%2Foauth2%2Fcallback`
+
+
 Returns:
 
 * HTTP Code: 200
 * text/html
 	
-	Login and authorization page for the user.
+	This will open the authorize page which then redirects you to the `redirect_uri`.
 
 If the user clicks 'Allow', the redirect URI will be called with an authorization code in the query parameters:
 
@@ -147,11 +154,12 @@ If user clicks 'Deny' you will receive an error:
 
 `https://{REDIRECT URI}?error=access_denied`
 
+
 ## POST /method/frappe.integrations.oauth2.get_token
 
 Trade the authorization code (obtained above) for an access token.
 
-Params:
+Params (in body):
 
 * grant_type (string)
 
@@ -162,7 +170,12 @@ Params:
 	Authorization code received in redirect URI.
 
 * client_id (string)
+
+	ID of your OAuth2 application
+
 * redirect_uri (string)
+
+Content-Type: application/x-www-form-urlencoded
 
 Example:
 
@@ -173,11 +186,11 @@ curl -X POST https://demo.erpnext.com/api/method/frappe.integrations.oauth2.get_
      -d 'grant_type=authorization_code&code=wa1YuQMff2ZXEAu2ZBHLpJRQXcGZdr
          &redirect_uri=https%3A%2F%2Fapp.getpostman.com%2Foauth2%2Fcallback&client_id=af615c2d3a'
 ```
+For **testing purposes** you can also pass the parameters in the URL like this (and open it in the browser):
+
+`https://demo.erpnext.com/api/method/frappe.integrations.oauth2.get_token?grant_type=authorization_code&code=A1KBRoYAN1uxrLAcdGLmvPKsRQLvzj&client_id=511cb2ac2d&redirect_uri=https%3A%2F%2Fapp.getpostman.com%2Foauth2%2Fcallback`
 
 Returns:
-
-* HTTP Code: 200
-* application/json:
 	
 ```json
 	{
@@ -188,6 +201,7 @@ Returns:
 	    "scope": "all"
 	}
 ```
+
 
 ## POST /method/frappe.integrations.oauth2.revoke_token
 
@@ -200,9 +214,6 @@ Params:
 	Access token to be revoked.
 
 Returns:
-
-* HTTP Code: 200
-* application/json:
 	
 ```json
 	{
@@ -257,15 +268,12 @@ curl -X GET https://demo.erpnext.com/api/resource/Customer?fields=["name"]\
 
 Returns:
 
-* HTTP Code: 200
-* application/json:
-
 ```json
 	{
 	  "data": [
 	    {
-	      "name": "string"
-	    }
+	      "name": "CUST-00001"
+	    },
 	  ]
 	}
 ```
@@ -274,19 +282,15 @@ Returns:
 
 Create a new document of this DocType.
 
-Content-Type: application/x-www-form-urlencoded
-
 Params (in path):
 
 * DocType (string)
 
 	The DocType you'd like to create. For example, 'Customer'.
 
-Params (in body):
+Content-Type: application/json
 
-* data="string"
-
-	Stringified JSON with key-value pairs for the new document.
+Request Body: `{"fieldname": value}`
 
 Example:
 
@@ -323,9 +327,7 @@ curl -X GET https://demo.erpnext.com/api/resource/Customer/CUST-00001
 
 ## PUT /resource/{DocType}/{DocumentName}
 
-Update a specific document by name (ID).
-
-Content-Type: application/x-www-form-urlencoded
+Update a specific document. This acts like a `PATCH` HTTP request in which you do not have to send the whole document but only the parts you want to change.
 
 Params (in path):
 
@@ -337,11 +339,33 @@ Params (in path):
 
 	The name (ID) of the document you'd like to update. For example, 'EMP-00001'.
 
-Params (in body):
+Content-Type: application/json
 
-* data="string"
+Request Body: `{"fieldname": value}`
 
-	Stringified JSON with the key-value pairs that should be updated.
+Example:
+
+*Update Next Contact Date.*
+
+```bash
+curl -X PUT https://demo.erpnext.com/api/resource/Lead/LEAD-00001 \
+     -H 'Accept: application/json' \
+     -H 'Content-Type: application/json' \
+     -d '{"contact_date":"2018-10-08"}'
+```
+
+Returns:
+
+```json
+{
+    "data": {
+        "doctype": "Lead",
+        "name": "LEAD-00001",
+        "contact_date": "2018-10-08",
+        "...": "..."
+    }
+}
+```
 
 ## DELETE /resource/{DocType}/{DocumentName}
 
@@ -354,3 +378,16 @@ Params (in path):
 * DocumentName (string)
 
 	The name (ID) of the document you'd like to delete. For example, 'EMP-00001'.
+
+# Further Reading
+
+HTTP Headers:
+
+* [Content-Type](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Type)
+* [Accept](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept)
+* [Authorization](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Authorization)
+
+oAuth2:
+
+* [Specification](https://tools.ietf.org/html/rfc6749)
+* [Bearer token](https://tools.ietf.org/html/rfc6750)
